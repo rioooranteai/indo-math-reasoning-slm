@@ -1,76 +1,80 @@
+"""Application settings, read from environment variables or a `.env` file."""
+
 from pathlib import Path
 
-from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Root project (folder yang berisi main.py), supaya path model tidak
-# bergantung pada lokasi folder di disk.
 PROJECT_DIR = Path(__file__).resolve().parent.parent
+MODEL_DIR = PROJECT_DIR / "model"
+
+# Same Indonesian system prompt used for SFT data and evaluation (SYSTEM_PROMPT_ID).
+SYSTEM_PROMPT_ID = (
+    "Anda adalah asisten penalaran matematika. Selesaikan soal dengan cermat "
+    "secara bertahap. Pada baris terakhir, tuliskan hanya jawaban numerik "
+    "akhir dengan format: \\boxed{nilai}"
+)
 
 
 class Settings(BaseSettings):
-    # Path ke model dasar hasil merge SLERP (model utuh)
-    base_model_path: str = str(PROJECT_DIR / "model" / "slerp_model")
+    model_config = SettingsConfigDict(
+        env_file=PROJECT_DIR / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
-    # Path ke adapter LoRA
-    adapter_model_path: str = str(PROJECT_DIR / "model" / "lora_model")
-
-    # Path ke model full slerp-sft (hasil `python -m utils.merge_lora`).
-    # Jika folder ini ada dan use_merged_model=True, model ini yang dimuat
-    # langsung tanpa PEFT; jika tidak, kembali ke base + adapter.
-    merged_model_path: str = str(PROJECT_DIR / "model" / "slerp_sft_model")
+    # Model files. The merged slerp-sft model is preferred when it exists;
+    # otherwise the SLERP base model is loaded with the LoRA adapter on top.
+    merged_model_path: Path = MODEL_DIR / "slerp_sft_model"
+    base_model_path: Path = MODEL_DIR / "slerp_model"
+    adapter_model_path: Path = MODEL_DIR / "lora_model"
     use_merged_model: bool = True
-
-    # Nama model yang ditampilkan di UI dan response API.
     model_display_name: str = "slerp-sft-model"
 
-    # Wajib GPU: server menolak start jika CUDA tidak tersedia, supaya
-    # model tidak diam-diam berjalan (lambat) di CPU.
+    # Hardware. With require_gpu the server refuses to start without CUDA
+    # instead of silently running on the (much slower) CPU.
     require_gpu: bool = True
-
-    # Index GPU yang dipakai (0 = GPU pertama). Seluruh model dimuat ke GPU ini.
     gpu_index: int = 0
-
-    # Paksa pakai CPU walau GPU tersedia (hanya untuk debugging;
-    # mengabaikan require_gpu).
     force_cpu: bool = False
 
-    # Batas panjang token yang dihasilkan model.
+    # Generation. Greedy decoding matches the evaluation protocol.
+    system_prompt: str = SYSTEM_PROMPT_ID
     max_new_tokens: int = 1024
-
-    # Parameter sampling.
+    do_sample: bool = False
     temperature: float = 0.7
     top_p: float = 0.9
-    do_sample: bool = True
 
-    # Host & port server, dibaca main.py saat dijalankan langsung
-    # (python main.py), atau diabaikan kalau pakai `uvicorn main:app`.
+    # Server, used by `python main.py`.
     host: str = "0.0.0.0"
     port: int = 8000
 
-    class Config:
-        env_file = str(PROJECT_DIR / ".env")
-        env_file_encoding = "utf-8"
+    @field_validator("merged_model_path", "base_model_path", "adapter_model_path")
+    @classmethod
+    def _relative_to_project(cls, path: Path) -> Path:
+        # Relative paths in .env are taken from the project folder, not the
+        # folder the server happens to be started from.
+        return path if path.is_absolute() else PROJECT_DIR / path
+
+    @property
+    def merged_model_available(self) -> bool:
+        return self.use_merged_model and (self.merged_model_path / "config.json").exists()
+
+    def validate_model_paths(self) -> None:
+        """Fail fast at startup if no usable model is on disk."""
+        if self.merged_model_available:
+            return
+
+        missing = [
+            path for path in (self.base_model_path, self.adapter_model_path)
+            if not path.exists()
+        ]
+        if missing:
+            raise FileNotFoundError(
+                "Model tidak ditemukan: "
+                + ", ".join(str(p) for p in missing)
+                + "\nUnduh model dengan: hf download rantetadung/indo-math-slerp-sft-1.5b "
+                "--local-dir model/slerp_sft_model"
+            )
 
 
 settings = Settings()
-
-
-def merged_model_available() -> bool:
-    return settings.use_merged_model and (Path(settings.merged_model_path) / "config.json").exists()
-
-
-def validate_paths() -> None:
-    """Pastikan folder model benar-benar ada sebelum server dijalankan."""
-    if merged_model_available():
-        return
-
-    for label, path in [
-        ("base_model_path", settings.base_model_path),
-        ("adapter_model_path", settings.adapter_model_path),
-    ]:
-        if not Path(path).exists():
-            raise FileNotFoundError(
-                f"Path '{label}' tidak ditemukan: {path}\n"
-                "Periksa isi file .env atau core/config.py, atau buat model "
-                "gabungan dengan `python -m utils.merge_lora`."
-            )
