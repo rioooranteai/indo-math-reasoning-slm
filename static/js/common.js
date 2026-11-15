@@ -130,6 +130,7 @@ const Steps = (() => {
   function render(source) {
     const stash = [];
     const keep = (html) => `MATHSLOT${stash.push(html) - 1}END`;
+    const keepBlock = (html) => `MATHBLOCK${stash.push(html) - 1}END`;
     let text = String(source || "").replace(/\r\n/g, "\n");
 
     // The final answer is already shown large above the steps, so drop the
@@ -140,8 +141,8 @@ const Steps = (() => {
     text = text.replace(/\n{3,}/g, "\n\n").trim();
 
     // Delimited maths first, so Markdown never sees the backslashes.
-    text = text.replace(/\\\[([\s\S]+?)\\\]/g, (_, tex) => keep(mathBlock(unbox(tex))));
-    text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => keep(mathBlock(unbox(tex))));
+    text = text.replace(/\\\[([\s\S]+?)\\\]/g, (_, tex) => keepBlock(mathBlock(unbox(tex))));
+    text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => keepBlock(mathBlock(unbox(tex))));
     text = text.replace(/\\\(([\s\S]+?)\\\)/g, (_, tex) => keep(katexHtml(unbox(tex), false)));
 
     // A \\boxed{..} left inside a sentence keeps its value, without the frame.
@@ -149,18 +150,22 @@ const Steps = (() => {
 
     text = text.split("\n").map((line) => {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.includes("MATHSLOT")) return line;
+      if (!trimmed || /MATH(SLOT|BLOCK)/.test(trimmed)) return line;
       if (looksLikeMath(trimmed)) {
         // Keep the indentation so the line stays inside its numbered step.
         const indent = line.match(/^\s*/)[0];
         const tex = trimmed.replace(/\*/g, "\\times ").replace(/\$/g, "\\$");
-        return indent + keep(mathBlock(tex));
+        return indent + keepBlock(mathBlock(tex));
       }
       return plainSymbols(line);
     }).join("\n");
 
     let html = window.marked.parse(escapeHtml(text), { breaks: true, gfm: true });
-    html = html.replace(/MATHSLOT(\d+)END/g, (_, i) => stash[Number(i)]);
+    // A calculation is its own block, so drop the line breaks around it.
+    html = html
+      .replace(/<br>\s*(?=MATHBLOCK)/g, "")
+      .replace(/(MATHBLOCK\d+END)\s*<br>/g, "$1")
+      .replace(/MATH(?:SLOT|BLOCK)(\d+)END/g, (_, i) => stash[Number(i)]);
     return html;
   }
 

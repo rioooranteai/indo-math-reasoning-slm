@@ -601,9 +601,11 @@ textarea:focus-visible {
 .prose strong { font-weight: 600; }
 
 /* Equations: one "= step" per row, wrapping instead of scrolling. */
+/* Calculations sit one tab (about four spaces) in from the prose. */
 .prose .math-block {
   display: block;
   margin: 0.5rem 0 0.9rem;
+  padding-left: 2rem;
 }
 
 .prose .math-row { display: block; }
@@ -613,6 +615,7 @@ textarea:focus-visible {
 /* Rare multi-line environments (aligned, cases) keep KaTeX's display layout. */
 .prose .katex-display {
   margin: 0.6rem 0 1rem;
+  padding-left: 2rem;
   text-align: left;
   overflow-x: auto;
   overflow-y: hidden;
