@@ -37,10 +37,11 @@ class Settings(BaseSettings):
     gpu_index: int = 0
     force_cpu: bool = False
 
-    # Generation. Greedy decoding matches the evaluation protocol.
+    # Generation. Sampling gives more varied solutions; set do_sample to
+    # False for greedy decoding, which reproduces the evaluation results.
     system_prompt: str = SYSTEM_PROMPT_ID
     max_new_tokens: int = 1024
-    do_sample: bool = False
+    do_sample: bool = True
     temperature: float = 0.7
     top_p: float = 0.9
 

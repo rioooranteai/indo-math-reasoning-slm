@@ -230,8 +230,10 @@ is bundled in `static/`, so it works without an internet connection.
 - **Tentang model** (`/tentang`): a plain-language explanation of how the model was built,
   its accuracy, and its limits.
 
-The app uses the same Indonesian system prompt and greedy decoding as the evaluation, and
-extracts the answer the same way: the last `\boxed{}` value, falling back to the last number.
+The app uses the same Indonesian system prompt as the evaluation and extracts the answer
+the same way: the last `\boxed{}` value, falling back to the last number. It samples with
+temperature 0.7 and top-p 0.9 by default, so the same question can get a different solution
+each time; set `DO_SAMPLE=false` for greedy decoding, which reproduces the evaluation.
 
 ### Requirements
 
@@ -280,7 +282,7 @@ All settings are optional. Copy `.env.example` to `.env` to change them.
 | `GPU_INDEX` | `0` | GPU to load the model on |
 | `FORCE_CPU` | `false` | Run on CPU (debugging only, slow) |
 | `MAX_NEW_TOKENS` | `1024` | Maximum length of the solution |
-| `DO_SAMPLE` | `false` | `false` = greedy decoding, as in evaluation |
+| `DO_SAMPLE` | `true` | `false` = greedy decoding, as in evaluation |
 | `TEMPERATURE`, `TOP_P` | `0.7`, `0.9` | Only used when `DO_SAMPLE=true` |
 | `HOST`, `PORT` | `0.0.0.0`, `8000` | Address used by `python main.py` |
 
