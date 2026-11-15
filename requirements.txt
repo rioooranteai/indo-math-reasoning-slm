@@ -1,0 +1,15 @@
+# Web server
+fastapi>=0.110
+uvicorn[standard]>=0.29
+jinja2>=3.1
+pydantic>=2.6
+pydantic-settings>=2.2
+
+# Model & inferensi
+# torch versi CUDA HARUS diinstall dulu secara terpisah (bukan dari PyPI biasa):
+#   pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
+torch==2.8.0
+transformers>=4.56
+peft>=0.19
+accelerate>=0.30
+safetensors>=0.4
