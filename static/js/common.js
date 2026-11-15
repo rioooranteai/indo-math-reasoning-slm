@@ -104,20 +104,29 @@ const Steps = (() => {
     return parts.map((part) => part.trim()).filter(Boolean);
   }
 
+  // KaTeX cannot wrap inside \\text{...}, so give each word its own \\text
+  // with a permitted break between them; long labels then wrap on phones.
+  function breakableText(tex) {
+    return tex.replace(/\\text\{([^{}]*)\}/g, (_, words) =>
+      words.split(/(?<= )/).map((word) => `\\text{${word}}`).join("\\allowbreak "));
+  }
+
   // Display maths as a block of rows. Rows use KaTeX inline mode so a row
   // that is still too wide wraps at + and = instead of scrolling.
   function mathBlock(tex) {
     const source = tex.trim();
     if (/\\begin\{/.test(source)) return katexHtml(source, true);
 
-    // Short equations stay on one line; long chains get one "= step" per row.
+    // Short equations stay on one line. A long chain keeps its first step
+    // beside the quantity ("Cost = 1/4 × 400") and puts each later
+    // "= step" on its own row underneath.
     const parts = splitAtEquals(source);
-    const rows = parts.length > 1 && visibleLength(source) > 48
-      ? [parts[0], ...parts.slice(1).map((part) => `= ${part}`)]
+    const rows = parts.length > 2 && visibleLength(source) > 48
+      ? [`${parts[0]} = ${parts[1]}`, ...parts.slice(2).map((part) => `= ${part}`)]
       : [source];
 
     const html = rows.map((row, i) =>
-      `<span class="math-row${i ? " math-row--next" : ""}">${katexHtml(row, false)}</span>`).join("");
+      `<span class="math-row${i ? " math-row--next" : ""}">${katexHtml(breakableText(row), false)}</span>`).join("");
     return `<span class="math-block">${html}</span>`;
   }
 
