@@ -76,7 +76,7 @@ print(tokenizer.decode(output[0][inputs["input_ids"].shape[1]:], skip_special_to
 ```
 
 The model reads Indonesian questions and reasons in English (cross-lingual CoT), ending with
-`\boxed{answer}`. It needs about 3.5 GB of VRAM in bfloat16.
+`\boxed{answer}`. It needs about 3 GB of VRAM in bfloat16, so it fits a 4 GB GPU.
 
 ## Method
 
@@ -216,51 +216,108 @@ Indonesian L3 (long reasoning chains) remains the weakest area of the final mode
 
 ## Inference dashboard
 
-A FastAPI dashboard (HTML/CSS/JS frontend) runs the final model locally. It has an input
-panel with L1/L2/L3 example problems, an output panel with the extracted answer and the
-full chain of thought, session statistics, and a history of the last 10 queries.
+A FastAPI web app runs the final model locally and serves a plain HTML/CSS/JS dashboard
+written in Indonesian for non-technical users. Everything it needs (fonts, KaTeX, marked)
+is bundled in `static/`, so it works without an internet connection.
+
+- **Hitung** (`/`): type one word problem, or pick an example card (Mudah, Sedang, Sulit)
+  that loads a real GSM8K test question. The answer is shown large, with the step-by-step
+  solution rendered with Markdown and KaTeX. For examples, the app also says whether the
+  answer matches the answer key.
+- **Banyak soal** (`/banyak-soal`): upload a CSV with a `soal` column and an optional
+  `kunci` (answer key) column, answer every row, see the score, and download the results
+  as CSV. Comma and semicolon (Excel) delimiters are both accepted; up to 500 rows.
+- **Tentang model** (`/tentang`): a plain-language explanation of how the model was built,
+  its accuracy, and its limits.
+
+The app uses the same Indonesian system prompt and greedy decoding as the evaluation, and
+extracts the answer the same way: the last `\boxed{}` value, falling back to the last number.
+
+### Requirements
+
+- Python 3.10 or newer (developed with Python 3.13 on Windows 11)
+- An NVIDIA GPU with at least 4 GB of VRAM and a driver for CUDA 12.9
+  (developed and tested on an NVIDIA GeForce RTX 3050 Laptop GPU, 4 GB)
 
 ### Running the dashboard
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate          # Windows
+.venv\Scripts\activate             # Windows (Linux/macOS: source .venv/bin/activate)
 
-# Install the CUDA build of PyTorch first (REQUIRED to run on GPU).
-# This project uses torch 2.8.0 built for CUDA 12.9.
-# (torchvision/torchaudio are not needed)
+# 1. Install the CUDA build of PyTorch first; the default PyPI build may be CPU-only.
 pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
 pip install -r requirements.txt
 
-# check that the GPU is detected (should print True and the GPU name)
+# 2. Check that the GPU is detected (prints True and the GPU name).
 python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 
-# download the model from Hugging Face (one time, ~3 GB)
+# 3. Download the model (about 3 GB, one time).
 hf download rantetadung/indo-math-slerp-sft-1.5b --local-dir model/slerp_sft_model
 
-# (optional) copy the settings file
-copy .env.example .env
-
-# run from the project folder
-uvicorn main:app --host 0.0.0.0 --port 8000
-# or: python main.py
+# 4. Start the server from the project folder.
+uvicorn main:app --port 8000
 ```
 
-Open http://localhost:8000. The model is loaded once at startup, so wait until the log shows
-"Model siap digunakan." (model ready).
-
-The model runs fully on the GPU (all layers in VRAM, no CPU/disk offload; bfloat16 when
-supported, otherwise float16; about 3.5 GB of VRAM). It was developed and tested on an
-NVIDIA GeForce RTX 3050 Laptop GPU (4 GB). The server refuses to start if CUDA is not
-detected (`REQUIRE_GPU=true`). `GET /health` reports the GPU in use.
+Open http://localhost:8000 once the log shows `Model ready.` The model is loaded once at
+startup, entirely on the GPU (no CPU or disk offload), in bfloat16 when the GPU supports it
+and float16 otherwise. Without CUDA the server stops with installation instructions.
 
 On Windows, if loading fails with `The paging file is too small (os error 1455)`, increase
 the Windows paging file (virtual memory) and restart.
 
+### Configuration
+
+All settings are optional. Copy `.env.example` to `.env` to change them.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MERGED_MODEL_PATH` | `model/slerp_sft_model` | Full merged model, used when it exists |
+| `BASE_MODEL_PATH` | `model/slerp_model` | SLERP model, used with the adapter as a fallback |
+| `ADAPTER_MODEL_PATH` | `model/lora_model` | LoRA adapter for the fallback |
+| `USE_MERGED_MODEL` | `true` | Set `false` to force SLERP model + adapter |
+| `REQUIRE_GPU` | `true` | Refuse to start without CUDA |
+| `GPU_INDEX` | `0` | GPU to load the model on |
+| `FORCE_CPU` | `false` | Run on CPU (debugging only, slow) |
+| `MAX_NEW_TOKENS` | `1024` | Maximum length of the solution |
+| `DO_SAMPLE` | `false` | `false` = greedy decoding, as in evaluation |
+| `TEMPERATURE`, `TOP_P` | `0.7`, `0.9` | Only used when `DO_SAMPLE=true` |
+| `HOST`, `PORT` | `0.0.0.0`, `8000` | Address used by `python main.py` |
+
+Relative paths are resolved from the project folder.
+
 ### API
 
-- `GET /health` → `{status, device, gpu_name, model_loaded}`
-- `POST /infer` with body `{"question": "..."}` → `{answer, chain_of_thought, model, elapsed_time, timestamp}`
+Interactive documentation is available at `/docs` while the server runs.
+
+`GET /health`
+
+```json
+{"status": "ok", "model_loaded": true, "device": "cuda:0", "gpu_name": "NVIDIA GeForce RTX 3050 Laptop GPU"}
+```
+
+`POST /infer` with `{"question": "..."}` (1 to 4,000 characters)
+
+```json
+{
+  "answer": "15",
+  "chain_of_thought": "To determine how many marbles Budi has now, ...",
+  "model": "slerp-sft-model",
+  "elapsed_time": 1.82,
+  "timestamp": "15/11/2026 17:30:00"
+}
+```
+
+`answer` is an empty string when no answer can be extracted. Errors return `422` for an
+invalid question, `503` while the model is not loaded, and `500` if generation fails.
+Requests are processed one at a time, since they share one GPU.
+
+### Tests
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
 
 ## Creating the full slerp-sft model (optional)
 
@@ -282,31 +339,43 @@ Set `USE_MERGED_MODEL=false` in `.env` to fall back to base model + adapter.
 ## Project structure
 
 ```
-main.py                    FastAPI entry point ("/" page + static mount)
-api/routes.py              GET /health and POST /infer endpoints
-core/config.py             Settings (can be overridden via .env)
-core/gpu.py                GPU checks and helpers
-services/model_service.py  Model loading, generation, \boxed{} answer extraction
-models/schemas.py          Request/response schemas (Pydantic)
-templates/, static/        Dashboard frontend
-utils/merge_lora.py        Merge the LoRA adapter into the SLERP model
-model/                     (not in Git; download from Hugging Face)
-  slerp_sft_model/         Full slerp-sft model (used by the dashboard)
-  slerp_model/             SLERP merged model (optional, for re-merging)
-  lora_model/              LoRA adapter from SFT (optional, for re-merging)
+main.py                     App entry point: wires routers, static files, model loading
+api/
+  inference.py              JSON API: GET /health, POST /infer
+  pages.py                  HTML pages: /, /banyak-soal, /tentang
+  schemas.py                Request and response models
+core/
+  config.py                 Settings (.env) and the shared system prompt
+  gpu.py                    CUDA checks, dtype choice, VRAM logging
+services/
+  model_service.py          Loads the model once, generates solutions
+  answer.py                 Final-answer extraction (\boxed{}, then last number)
+utils/
+  merge_lora.py             Merges the LoRA adapter into the SLERP model
+templates/                  Jinja pages: base layout, Hitung, Banyak soal, Tentang model
+static/
+  css/, js/                 Dashboard styles and scripts
+  fonts/                    Newsreader and Hanken Grotesk (SIL OFL)
+  vendor/                   KaTeX and marked (MIT), each with its licence
+tests/                      Unit tests (pytest)
+model/                      Not in Git; download from Hugging Face
+  slerp_sft_model/          Full merged model used by the dashboard
+  slerp_model/              SLERP model (only needed to re-run the merge)
+  lora_model/               LoRA adapter (only needed to re-run the merge)
 dataset/
-  sft/sft_dataset.json             3,825 SFT examples (ID question + EN teacher CoT)
-  test/GSM8K Test Set.json         1,319 test problems (EN + ID)
-  slerp/val_tsearch_pool.xlsx      210-problem subset for the SLERP t search
+  sft/sft_dataset.json            3,825 SFT examples (ID question + EN teacher CoT)
+  test/GSM8K Test Set.json        1,319 test problems with EN and ID questions
+  slerp/val_tsearch_pool.xlsx     210-problem subset for the SLERP t search
 notebooks/
-  01_Dataset_Preparation_GSM8K.ipynb   Strata, sampling, teacher CoT, verification
-  02_Baseline_Model_Evaluation.ipynb   Baseline EN/ID evaluation
-  03_Model_Merging.ipynb               Optuna t search, SLERP merge, weight analysis
-  04_Supervised_Fine_Tuning.ipynb      LoRA SFT, evaluation, McNemar tests
+  01_Dataset_Preparation_GSM8K.ipynb   Strata, sampling, teacher CoT, verification, translation
+  02_Baseline_Model_Evaluation.ipynb   Baseline EN/ID evaluation of both 1.5B models
+  03_Model_Merging.ipynb               Optuna t search, SLERP merge, weight analysis, evaluation
+  04_Supervised_Fine_Tuning.ipynb      LoRA SFT on the SLERP model (and on the math model
+                                       for comparison), training curves, evaluation
 ```
 
-The experiments (merging, SFT, evaluation) were run on Google Colab with an NVIDIA L4
-(22.5 GB) for merging and evaluation and an NVIDIA A100 (40 GB) for SFT.
+The experiments ran on Google Colab: an NVIDIA L4 (22.5 GB) for merging and evaluation,
+and an NVIDIA A100 (40 GB) for SFT.
 
 ## Limitations and future work
 
@@ -319,4 +388,6 @@ The experiments (merging, SFT, evaluation) were run on Google Colab with an NVID
 
 ## License
 
-The model weights follow the Apache 2.0 license of the Qwen2.5 base models.
+The model weights follow the Apache 2.0 license of the Qwen2.5 base models. The bundled
+libraries keep their own licences: KaTeX and marked (MIT, see `static/vendor/`) and the
+Newsreader and Hanken Grotesk fonts (SIL Open Font License).
