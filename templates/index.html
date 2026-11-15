@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Inferensi Model Matematika</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<header>
+  <h1>Dashboard Inferensi Model Matematika</h1>
+  <button class="theme-toggle" id="themeToggle">Mode Gelap</button>
+</header>
+
+<div class="stats-bar">
+  <div>Total Inferensi: <b id="statTotal">0</b></div>
+  <div>Rata-rata Waktu Inferensi: <b id="statAvg">0.00s</b></div>
+</div>
+
+<div class="container">
+  <div class="panel" id="inputPanel">
+    <h2>Panel Input Soal</h2>
+
+    <label for="questionInput">Soal Matematika (Bahasa Indonesia)</label>
+    <textarea id="questionInput" placeholder="Tulis soal matematika di sini..."></textarea>
+
+    <div class="examples">
+      <label>Contoh Soal</label>
+      <div class="example-btns">
+        <button class="tag-btn" data-level="L1">L1 - Mudah</button>
+        <button class="tag-btn" data-level="L2">L2 - Sedang</button>
+        <button class="tag-btn" data-level="L3">L3 - Sulit</button>
+      </div>
+    </div>
+
+    <button class="run-btn" id="runBtn">Jalankan Inferensi</button>
+  </div>
+
+  <div class="panel" id="outputPanel">
+    <h2>Panel Output Model</h2>
+
+    <div class="output-block">
+      <h3>Jawaban Akhir</h3>
+      <div class="answer-box" id="finalAnswer">-</div>
+    </div>
+
+    <div class="output-block">
+      <h3>Rantai Penalaran (Chain-of-Thought)</h3>
+      <div class="cot-toggle" id="cotToggle">▾ Sembunyikan chain-of-thought</div>
+      <div class="cot-box" id="cotBox">Belum ada hasil inferensi.</div>
+    </div>
+
+    <div class="output-block">
+      <h3>Metadata Inferensi</h3>
+      <div class="meta-grid">
+        <div>Model: <span id="metaModel">-</span></div>
+        <div>Waktu Eksekusi: <span id="metaTime">-</span></div>
+        <div>Timestamp: <span id="metaTimestamp">-</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="history-panel">
+  <h2>Riwayat Inferensi (10 Terakhir)</h2>
+  <div id="historyList"><p class="empty-note">Belum ada riwayat inferensi.</p></div>
+</div>
+
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>
