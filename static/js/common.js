@@ -64,8 +64,26 @@ const Steps = (() => {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
+  // In LaTeX a bare % starts a comment and a bare $ is not allowed inside
+  // maths. Models often write "80% of $40", so treat them as plain symbols.
+  function escapeSymbols(tex) {
+    return tex.replace(/(?<!\\)([%$])/g, "\\$1");
+  }
+
   function katexHtml(tex, display) {
-    return window.katex.renderToString(tex, { displayMode: display, throwOnError: false, strict: "ignore" });
+    return window.katex.renderToString(escapeSymbols(tex), {
+      displayMode: display, throwOnError: false, strict: "ignore",
+    });
+  }
+
+  // Rough number of visible characters, used to decide when to stack.
+  function visibleLength(tex) {
+    return tex
+      .replace(/\\text\{([^{}]*)\}/g, "$1")
+      .replace(/\\[a-zA-Z]+/g, "x")
+      .replace(/[{}\\^_]/g, "")
+      .replace(/\s+/g, " ")
+      .trim().length;
   }
 
   // Split at "=" signs that are not inside braces or brackets.
@@ -86,15 +104,15 @@ const Steps = (() => {
     return parts.map((part) => part.trim()).filter(Boolean);
   }
 
-  // Display maths, stacked one "= step" per row instead of one long line.
-  // Rows use KaTeX inline mode so a row that is still too wide wraps at
-  // + and = instead of forcing a horizontal scrollbar.
+  // Display maths as a block of rows. Rows use KaTeX inline mode so a row
+  // that is still too wide wraps at + and = instead of scrolling.
   function mathBlock(tex) {
     const source = tex.trim();
     if (/\\begin\{/.test(source)) return katexHtml(source, true);
 
+    // Short equations stay on one line; long chains get one "= step" per row.
     const parts = splitAtEquals(source);
-    const rows = parts.length > 2 || (parts.length === 2 && source.length > 40)
+    const rows = parts.length > 1 && visibleLength(source) > 48
       ? [parts[0], ...parts.slice(1).map((part) => `= ${part}`)]
       : [source];
 
