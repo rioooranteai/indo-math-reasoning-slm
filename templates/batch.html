@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Banyak soal sekaligus – Indo Math{% endblock %}
+
+{% block page_class %}page--wide{% endblock %}
+
+{% block content %}
+<section class="intro">
+  <h1>Banyak soal sekaligus.</h1>
+  <p class="lede">
+    Unggah file CSV berisi daftar soal. Model menjawabnya satu per satu, lalu
+    hasilnya bisa diunduh lagi sebagai CSV yang bisa dibuka di Excel.
+  </p>
+</section>
+
+<ol class="steps-list">
+  <li>
+    <h2>Siapkan file</h2>
+    <p>
+      Satu soal per baris, dengan kolom <code>soal</code>. Kolom <code>kunci</code>
+      boleh diisi jawaban benar agar hasilnya langsung dinilai.
+    </p>
+    <button type="button" class="btn btn--quiet" id="templateBtn">Unduh templat CSV</button>
+  </li>
+
+  <li>
+    <h2>Unggah file</h2>
+    <label class="dropzone" id="dropzone" for="fileInput">
+      <input type="file" id="fileInput" accept=".csv,text/csv">
+      <span class="dropzone__title" id="dropTitle">Pilih file CSV atau seret ke sini</span>
+      <span class="dropzone__hint" id="dropHint">Maksimal 500 soal.</span>
+    </label>
+    <button type="button" class="btn btn--link" id="sampleBtn">Atau pakai 18 soal contoh</button>
+    <p class="notice" id="fileNotice" role="alert" hidden></p>
+  </li>
+
+  <li>
+    <h2>Hitung dan unduh hasil</h2>
+    <div class="batch-actions">
+      <button type="button" class="btn btn--primary" id="runBtn" disabled>Hitung semua soal</button>
+      <button type="button" class="btn btn--quiet" id="stopBtn" hidden>Hentikan</button>
+      <button type="button" class="btn btn--quiet" id="downloadBtn" disabled>Unduh hasil CSV</button>
+    </div>
+
+    <div class="progress" id="progress" hidden>
+      <div class="progress__track"><div class="progress__fill" id="progressFill"></div></div>
+      <p class="progress__text" id="progressText" aria-live="polite"></p>
+    </div>
+
+    <p class="summary" id="summary" hidden></p>
+  </li>
+</ol>
+
+<section class="table-wrap" id="tableWrap" hidden>
+  <table class="results">
+    <caption class="visually-hidden">Daftar soal dan jawaban model</caption>
+    <thead>
+      <tr>
+        <th scope="col" class="col-no">No</th>
+        <th scope="col">Soal</th>
+        <th scope="col" class="col-num">Kunci</th>
+        <th scope="col" class="col-num">Jawaban</th>
+        <th scope="col" class="col-status">Hasil</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/examples.js"></script>
+<script src="/static/js/common.js"></script>
+<script src="/static/js/batch.js"></script>
+{% endblock %}

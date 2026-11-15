@@ -1,72 +1,98 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Inferensi Model Matematika</title>
-<link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
+{% extends "base.html" %}
 
-<header>
-  <h1>Dashboard Inferensi Model Matematika</h1>
-  <button class="theme-toggle" id="themeToggle">Mode Gelap</button>
+{% block title %}Indo Math: jawab soal cerita matematika{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="/static/vendor/katex/katex.min.css">
+{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <h1>Soal cerita matematika, dijawab langkah demi langkah.</h1>
+  <p class="lede">
+    Tulis soal dalam bahasa Indonesia. Model AI kecil di komputer ini menjawab
+    dan menunjukkan cara menghitungnya.
+  </p>
 </header>
 
-<div class="stats-bar">
-  <div>Total Inferensi: <b id="statTotal">0</b></div>
-  <div>Rata-rata Waktu Inferensi: <b id="statAvg">0.00s</b></div>
-</div>
+<div class="sheet">
+  <form class="sheet__row" id="askForm" novalidate>
+    <div class="sheet__margin">
+      <label for="question">Soal</label>
+    </div>
 
-<div class="container">
-  <div class="panel" id="inputPanel">
-    <h2>Panel Input Soal</h2>
+    <div class="sheet__body">
+      <textarea id="question" name="question" rows="4"
+        placeholder="Contoh: Ani punya 12 kelereng, lalu memberikan 5 kepada Budi. Berapa kelereng Ani sekarang?"></textarea>
 
-    <label for="questionInput">Soal Matematika (Bahasa Indonesia)</label>
-    <textarea id="questionInput" placeholder="Tulis soal matematika di sini..."></textarea>
+      <div class="examples">
+        <p class="examples__label" id="examplesLabel">Belum punya soal? Pilih contoh dari soal ujian GSM8K. Klik lagi untuk soal lain.</p>
+        <div class="examples__grid" role="group" aria-labelledby="examplesLabel">
+          <button type="button" class="example-card" data-level="L1">
+            <span class="example-card__title">Mudah</span>
+            <span class="example-card__desc">3 langkah hitung atau kurang.</span>
+            <span class="example-card__stat">Model benar 70%</span>
+            <svg class="example-card__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 18V6M7 11l5-5 5 5"/></svg>
+          </button>
+          <button type="button" class="example-card" data-level="L2">
+            <span class="example-card__title">Sedang</span>
+            <span class="example-card__desc">4 sampai 5 langkah hitung.</span>
+            <span class="example-card__stat">Model benar 56%</span>
+            <svg class="example-card__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 18V6M7 11l5-5 5 5"/></svg>
+          </button>
+          <button type="button" class="example-card" data-level="L3">
+            <span class="example-card__title">Sulit</span>
+            <span class="example-card__desc">6 langkah hitung atau lebih.</span>
+            <span class="example-card__stat">Model benar 43%</span>
+            <svg class="example-card__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 18V6M7 11l5-5 5 5"/></svg>
+          </button>
+        </div>
+      </div>
 
-    <div class="examples">
-      <label>Contoh Soal</label>
-      <div class="example-btns">
-        <button class="tag-btn" data-level="L1">L1 - Mudah</button>
-        <button class="tag-btn" data-level="L2">L2 - Sedang</button>
-        <button class="tag-btn" data-level="L3">L3 - Sulit</button>
+      <div class="ask-bar">
+        <p class="ask-bar__note">Bisa juga dengan menekan <kbd>Ctrl</kbd> + <kbd>Enter</kbd>.</p>
+        <button type="submit" class="btn btn--primary" id="solveBtn">Hitung jawaban</button>
+      </div>
+
+      <p class="notice" id="formNotice" role="alert" hidden></p>
+    </div>
+  </form>
+
+  <section class="sheet__row result is-empty" id="result" aria-live="polite" aria-labelledby="answerLabel">
+    <div class="sheet__margin">
+      <h2 id="answerLabel">Jawab</h2>
+    </div>
+
+    <div class="sheet__body">
+      <p class="result__empty" id="emptyState">
+        Jawaban dan cara menghitungnya muncul di sini setelah Anda menekan
+        Hitung jawaban.
+      </p>
+
+      <div class="result__waiting" id="waiting" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="waitingText">Sedang menghitung…</span>
+      </div>
+
+      <div id="answerBlock" hidden>
+        <p class="answer" id="answer"></p>
+        <p class="result__meta" id="answerMeta"></p>
+
+        <details class="steps" id="steps">
+          <summary>Lihat cara menghitung</summary>
+          <p class="steps__note">Langkah penyelesaian ditulis dalam bahasa Inggris.</p>
+          <div class="steps__body prose" id="stepsBody"></div>
+        </details>
       </div>
     </div>
-
-    <button class="run-btn" id="runBtn">Jalankan Inferensi</button>
-  </div>
-
-  <div class="panel" id="outputPanel">
-    <h2>Panel Output Model</h2>
-
-    <div class="output-block">
-      <h3>Jawaban Akhir</h3>
-      <div class="answer-box" id="finalAnswer">-</div>
-    </div>
-
-    <div class="output-block">
-      <h3>Rantai Penalaran (Chain-of-Thought)</h3>
-      <div class="cot-toggle" id="cotToggle">▾ Sembunyikan chain-of-thought</div>
-      <div class="cot-box" id="cotBox">Belum ada hasil inferensi.</div>
-    </div>
-
-    <div class="output-block">
-      <h3>Metadata Inferensi</h3>
-      <div class="meta-grid">
-        <div>Model: <span id="metaModel">-</span></div>
-        <div>Waktu Eksekusi: <span id="metaTime">-</span></div>
-        <div>Timestamp: <span id="metaTimestamp">-</span></div>
-      </div>
-    </div>
-  </div>
+  </section>
 </div>
+{% endblock %}
 
-<div class="history-panel">
-  <h2>Riwayat Inferensi (10 Terakhir)</h2>
-  <div id="historyList"><p class="empty-note">Belum ada riwayat inferensi.</p></div>
-</div>
-
-<script src="/static/js/dashboard.js"></script>
-</body>
-</html>
+{% block scripts %}
+<script src="/static/vendor/katex/katex.min.js"></script>
+<script src="/static/vendor/marked/marked.umd.js"></script>
+<script src="/static/js/examples.js"></script>
+<script src="/static/js/common.js"></script>
+<script src="/static/js/solve.js"></script>
+{% endblock %}

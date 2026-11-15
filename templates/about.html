@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Tentang model – Indo Math{% endblock %}
+
+{% block page_class %}page--about{% endblock %}
+
+{% block content %}
+<section class="intro">
+  <h1>Model kecil yang paham soal cerita berbahasa Indonesia.</h1>
+  <p class="lede">
+    Indo Math adalah model bahasa berukuran 1,5 miliar parameter untuk soal
+    cerita matematika setingkat SD sampai SMP. Model ini cukup kecil untuk
+    berjalan di laptop dengan GPU 4 GB, tanpa internet.
+  </p>
+</section>
+
+<section class="about-block">
+  <h2>Masalah yang diselesaikan</h2>
+  <p>
+    Model AI kecil yang jago matematika biasanya dilatih dengan soal berbahasa
+    Inggris. Saat soal yang sama ditulis dalam bahasa Indonesia, akurasinya
+    anjlok. Model matematika Qwen2.5-Math-1.5B, misalnya, menjawab benar 85,7%
+    soal berbahasa Inggris, tetapi hanya 26,8% saat soalnya diterjemahkan.
+  </p>
+</section>
+
+<section class="about-block">
+  <h2>Cara model ini dibuat</h2>
+  <ol class="process">
+    <li>
+      <h3>Menggabungkan dua model</h3>
+      <p>
+        Model khusus matematika digabung dengan model umum yang lebih paham
+        bahasa Indonesia. Penggabungan memakai metode SLERP, dengan porsi model
+        umum hanya sekitar 8%.
+      </p>
+    </li>
+    <li>
+      <h3>Belajar dari contoh</h3>
+      <p>
+        Model hasil gabungan dilatih ulang dengan 3.825 soal berbahasa
+        Indonesia. Pembahasan langkah demi langkahnya dibuat oleh model guru
+        yang lebih besar (7 miliar parameter) dan sudah dicek kebenarannya.
+      </p>
+    </li>
+    <li>
+      <h3>Disatukan menjadi satu model</h3>
+      <p>
+        Hasil pelatihan disatukan ke dalam model, sehingga siap dipakai tanpa
+        komponen tambahan.
+      </p>
+    </li>
+  </ol>
+</section>
+
+<section class="about-block">
+  <h2>Seberapa akurat</h2>
+  <p>
+    Diuji pada 1.319 soal GSM8K yang diterjemahkan ke bahasa Indonesia.
+    Persentase menunjukkan berapa soal yang dijawab benar.
+  </p>
+
+  <dl class="bars">
+    <div class="bar">
+      <dt>Model matematika asli</dt>
+      <dd><span class="bar__fill" style="--value: 26.8"></span><span class="bar__value">26,8%</span></dd>
+    </div>
+    <div class="bar">
+      <dt>Model umum</dt>
+      <dd><span class="bar__fill" style="--value: 48.6"></span><span class="bar__value">48,6%</span></dd>
+    </div>
+    <div class="bar">
+      <dt>Setelah digabung</dt>
+      <dd><span class="bar__fill" style="--value: 45.49"></span><span class="bar__value">45,5%</span></dd>
+    </div>
+    <div class="bar bar--ours">
+      <dt>Indo Math</dt>
+      <dd><span class="bar__fill" style="--value: 61.49"></span><span class="bar__value">61,5%</span></dd>
+    </div>
+  </dl>
+
+  <p>
+    Kemampuan berbahasa Inggrisnya tetap terjaga: 84,5% benar, hampir sama
+    dengan model matematika aslinya.
+  </p>
+
+  <h3 class="table-title">Menurut tingkat kesulitan</h3>
+  <table class="plain-table">
+    <thead>
+      <tr><th scope="col">Soal</th><th scope="col">Langkah hitung</th><th scope="col" class="col-num">Benar</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Mudah</td><td>3 langkah atau kurang</td><td class="col-num">69,6%</td></tr>
+      <tr><td>Sedang</td><td>4 sampai 5 langkah</td><td class="col-num">55,5%</td></tr>
+      <tr><td>Sulit</td><td>6 langkah atau lebih</td><td class="col-num">42,7%</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="about-block">
+  <h2>Yang perlu diketahui</h2>
+  <ul class="plain-list">
+    <li>Langkah penyelesaian ditulis dalam bahasa Inggris, walaupun soalnya berbahasa Indonesia.</li>
+    <li>Paling cocok untuk soal cerita berhitung. Soal geometri bergambar atau aljabar lanjut belum didukung.</li>
+    <li>Model bisa salah hitung, terutama pada soal yang panjang. Periksa kembali jawaban yang penting.</li>
+  </ul>
+</section>
+
+<section class="about-block">
+  <h2>Sumber</h2>
+  <ul class="plain-list">
+    <li><a href="https://huggingface.co/rantetadung/indo-math-slerp-sft-1.5b" target="_blank" rel="noopener">Model di Hugging Face</a></li>
+    <li><a href="https://github.com/rioooranteai/indo-math-reasoning-slm" target="_blank" rel="noopener">Kode di GitHub</a></li>
+  </ul>
+</section>
+{% endblock %}
