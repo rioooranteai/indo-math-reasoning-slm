@@ -1,5 +1,5 @@
 # --- Virtual environment ---
-# venv yang dibuat langsung di root proyek (python -m venv .)
+# A venv created directly in the project folder (python -m venv .)
 /Include/
 /Lib/
 /Scripts/
@@ -8,7 +8,7 @@
 /lib64/
 /share/
 /pyvenv.cfg
-# venv di subfolder (disarankan: python -m venv .venv)
+# A venv in a subfolder (recommended: python -m venv .venv)
 .venv/
 venv/
 env/
@@ -19,13 +19,12 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 
-# --- Konfigurasi lokal / rahasia ---
+# --- Local settings and secrets ---
 .env
 !.env.example
 
 # --- Model ---
-# Seluruh folder model (SLERP, adapter LoRA, full slerp-sft) tidak masuk Git
-# karena berukuran besar; model di-hosting di Hugging Face Hub.
+# Model files are large and hosted on the Hugging Face Hub, not in Git.
 /model/
 *.safetensors
 *.bin
