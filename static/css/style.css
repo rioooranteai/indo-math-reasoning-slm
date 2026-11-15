@@ -600,6 +600,17 @@ textarea:focus-visible {
 .prose li { margin-bottom: 0.4rem; }
 .prose strong { font-weight: 600; }
 
+/* Equations: one "= step" per row, wrapping instead of scrolling. */
+.prose .math-block {
+  display: block;
+  margin: 0.5rem 0 0.9rem;
+}
+
+.prose .math-row { display: block; }
+
+.prose .math-row--next { padding-left: 1.5rem; }
+
+/* Rare multi-line environments (aligned, cases) keep KaTeX's display layout. */
 .prose .katex-display {
   margin: 0.6rem 0 1rem;
   text-align: left;

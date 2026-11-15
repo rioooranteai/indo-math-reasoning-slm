@@ -68,6 +68,41 @@ const Steps = (() => {
     return window.katex.renderToString(tex, { displayMode: display, throwOnError: false, strict: "ignore" });
   }
 
+  // Split at "=" signs that are not inside braces or brackets.
+  function splitAtEquals(tex) {
+    const parts = [];
+    let depth = 0;
+    let start = 0;
+    for (let i = 0; i < tex.length; i++) {
+      const ch = tex[i];
+      if (ch === "{" || ch === "(" || ch === "[") depth++;
+      else if (ch === "}" || ch === ")" || ch === "]") depth = Math.max(0, depth - 1);
+      else if (ch === "=" && depth === 0 && tex[i - 1] !== "\\") {
+        parts.push(tex.slice(start, i));
+        start = i + 1;
+      }
+    }
+    parts.push(tex.slice(start));
+    return parts.map((part) => part.trim()).filter(Boolean);
+  }
+
+  // Display maths, stacked one "= step" per row instead of one long line.
+  // Rows use KaTeX inline mode so a row that is still too wide wraps at
+  // + and = instead of forcing a horizontal scrollbar.
+  function mathBlock(tex) {
+    const source = tex.trim();
+    if (/\\begin\{/.test(source)) return katexHtml(source, true);
+
+    const parts = splitAtEquals(source);
+    const rows = parts.length > 2 || (parts.length === 2 && source.length > 40)
+      ? [parts[0], ...parts.slice(1).map((part) => `= ${part}`)]
+      : [source];
+
+    const html = rows.map((row, i) =>
+      `<span class="math-row${i ? " math-row--next" : ""}">${katexHtml(row, false)}</span>`).join("");
+    return `<span class="math-block">${html}</span>`;
+  }
+
   // A bare line such as "3 \times 3 = 9" is maths when little prose is left.
   function looksLikeMath(line) {
     // Pure arithmetic such as "40 + 24 = 64" also counts.
@@ -105,8 +140,8 @@ const Steps = (() => {
     text = text.replace(/\n{3,}/g, "\n\n").trim();
 
     // Delimited maths first, so Markdown never sees the backslashes.
-    text = text.replace(/\\\[([\s\S]+?)\\\]/g, (_, tex) => keep(katexHtml(unbox(tex), true)));
-    text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => keep(katexHtml(unbox(tex), true)));
+    text = text.replace(/\\\[([\s\S]+?)\\\]/g, (_, tex) => keep(mathBlock(unbox(tex))));
+    text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => keep(mathBlock(unbox(tex))));
     text = text.replace(/\\\(([\s\S]+?)\\\)/g, (_, tex) => keep(katexHtml(unbox(tex), false)));
 
     // A \\boxed{..} left inside a sentence keeps its value, without the frame.
@@ -119,7 +154,7 @@ const Steps = (() => {
         // Keep the indentation so the line stays inside its numbered step.
         const indent = line.match(/^\s*/)[0];
         const tex = trimmed.replace(/\*/g, "\\times ").replace(/\$/g, "\\$");
-        return indent + keep(katexHtml(tex, true));
+        return indent + keep(mathBlock(tex));
       }
       return plainSymbols(line);
     }).join("\n");
